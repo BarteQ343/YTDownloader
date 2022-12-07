@@ -5,7 +5,7 @@ from mutagen.easyid3 import EasyID3
 import sys
 import threading
 from win32com.shell import shell, shellcon
-
+import tkinter.font as font
 
 root = tk.Tk()
 root.geometry('500x600')
@@ -13,12 +13,20 @@ root.resizable(0,0)
 root.title("DownTube - Youtube Downloader")
 root.configure(bg='black')
 
+cwd = os.getcwd()
+
+tk.Label(root,text = '', font ='arial 20 bold', background = 'black', fg = 'white').pack()
 tk.Label(root,text = 'Youtube Video Downloader', font ='arial 20 bold', background = 'black', fg = 'white').pack()
 
 link = tk.StringVar()
 
-tk.Label(root, text = 'Paste Link Here:', font = 'arial 15 bold', background = 'black', fg = 'white', bd = 2).place(x= 160 , y = 60)
-link_enter = tk.Entry(root, width = 70,textvariable = link, background = 'black', fg = 'white').place(x = 32, y = 90)
+bg = str(cwd)+'\\assets\\linkInsert.png'
+ph = tk.PhotoImage(file=bg)
+back = tk.Label(root,image=ph)
+back.image = ph
+back.place(x = 37, y = 155)
+tk.Label(root, text = 'Paste Link Here:', font = 'arial 15 bold', background = 'black', fg = 'white', bd = 2).place(x= 170 , y = 120)
+link_enter = tk.Entry(root, width = 58,textvariable = link, fg = 'white', borderwidth=0, background='#555555',font='arial 10').place(x = 47, y = 158)
 
 if os.name == 'nt':
     musicDir = shell.SHGetKnownFolderPath(shellcon.FOLDERID_Music, 0, 0)
@@ -35,9 +43,9 @@ class PrintLogger(): # create file like object
 
     def flush(self): # needed for file like object
         pass
-t = tk.Text(root, height = 10, width = 70, background = 'black', fg = 'white',  wrap='word')
-t.place(x = 500, y = 1000)
-t.pack(side="right", fill="x", expand=True)
+t = tk.Text(root, height = 7, width = 55, background = 'black', fg = 'white',  wrap='word',)
+t.place(x = 32, y = 1060)
+t.pack(side="right", expand=True)
 # create instance of file like object
 pl = PrintLogger(t)
 
@@ -52,15 +60,12 @@ def Downloader():
     video_info = yt_dlp.YoutubeDL().extract_info(url = url,download=False)
     year = video_info['upload_date']
     filename = fr"{video_info['title']}.mp3"
-    #print(filename)
     newFilename = list(filename)
     for i in range (0, len(newFilename)):
-        if newFilename[i] == '|':
+        if newFilename[i] == '|' and newFilename[i] == '"' and newFilename[i] == '?':
             newFilename[i] = '#'
     filename = ''.join(newFilename)
-    #print(filename)
     filePath = musicDir+"/Downloaded/" + filename
-    #filenametmp = r"W:\Muzyka z YT\temp filename for the song.mp3"
     options={'format':'bestaudio/best', 'keepvideo':False, 'outtmpl':filePath, 'addmetadata':True,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
@@ -90,9 +95,23 @@ def Downloader():
 def DownloaderStart(event=None):
     y = threading.Thread(target=Downloader)
     y.start()
-butt = tk.Button(root,text = 'DOWNLOAD', font = 'arial 15 bold' ,bg = 'dark blue', padx = 2, command = DownloaderStart)
-butt.place(x=180 ,y = 150)
+
+
+bg = str(cwd)+'\\assets\\button.png'
+bgh = str(cwd)+'\\assets\\buttonHover.png'
+ph = tk.PhotoImage(file=bg)
+phh = tk.PhotoImage(file=bgh)
+
+def on_enter(e):
+    butt['image'] = phh
+
+def on_leave(e):
+    butt['image'] = ph
+
+butt = tk.Button(root, image = ph, width = 152, height = 50,borderwidth = 0, command = DownloaderStart)
+butt.image = ph
+butt.place(x=174 ,y = 210)
+butt.bind("<Enter>", on_enter)
+butt.bind("<Leave>", on_leave)
 root.bind('<Return>', DownloaderStart)
 root.mainloop()
-
-###TODO:Wyciągnij path do folderu Muzyka i tam wrzucaj dynamicznie pliki
