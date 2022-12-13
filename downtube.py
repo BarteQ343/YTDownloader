@@ -11,22 +11,22 @@ root = tk.Tk()
 root.geometry('500x600')
 root.resizable(0,0)
 root.title("DownTube - Youtube Downloader")
-root.configure(bg='black')
+root.configure(bg='#232323')
 
-cwd = os.getcwd()
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-tk.Label(root,text = '', font ='arial 20 bold', background = 'black', fg = 'white').pack()
-tk.Label(root,text = 'Youtube Video Downloader', font ='arial 20 bold', background = 'black', fg = 'white').pack()
+tk.Label(root,text = '', font ='arial 20 bold', background = '#232323', fg = 'white').pack()
+tk.Label(root,text = 'Youtube Video Downloader', font ='arial 20 bold', background = '#232323', fg = 'white').pack()
 
 link = tk.StringVar()
 
-bg = str(cwd)+'\\assets\\linkInsert.png'
+bg = str(ROOT_DIR)+'\\assets\\linkInsert.png'
 ph = tk.PhotoImage(file=bg)
-back = tk.Label(root,image=ph)
+back = tk.Label(root,image=ph,background='#232323')
 back.image = ph
 back.place(x = 37, y = 155)
-tk.Label(root, text = 'Paste Link Here:', font = 'arial 15 bold', background = 'black', fg = 'white', bd = 2).place(x= 170 , y = 120)
-link_enter = tk.Entry(root, width = 58,textvariable = link, fg = 'white', borderwidth=0, background='#555555',font='arial 10').place(x = 47, y = 158)
+tk.Label(root, text = 'Paste Link Here:', font = 'arial 15 bold', background = '#232323', fg = 'white', bd = 2).place(x= 170 , y = 120)
+link_enter = tk.Entry(root, width = 58,textvariable = link, fg = 'white', borderwidth=0, background='#555555',font='arial 10').place(x = 47, y = 160)
 
 if os.name == 'nt':
     musicDir = shell.SHGetKnownFolderPath(shellcon.FOLDERID_Music, 0, 0)
@@ -43,9 +43,14 @@ class PrintLogger(): # create file like object
 
     def flush(self): # needed for file like object
         pass
-t = tk.Text(root, height = 7, width = 55, background = 'black', fg = 'white',  wrap='word',)
+bg = str(ROOT_DIR)+'\\assets\\console.png'
+ph = tk.PhotoImage(file=bg)
+back = tk.Label(root,image=ph,background='#232323')
+back.image = ph
+back.place(x = 18, y = 272)
+t = tk.Text(root, height = 7, width = 55, background = '#555555', fg = 'white',  wrap='word', borderwidth = 0)
 t.place(x = 32, y = 1060)
-t.pack(side="right", expand=True)
+t.pack(expand=True)
 # create instance of file like object
 pl = PrintLogger(t)
 
@@ -78,8 +83,6 @@ def Downloader():
         ]}
 
     yt_dlp.YoutubeDL(options).download([video_info['webpage_url']])
-    
-    #os.rename(filenametmp, filename)
 
     #tk.Label(root, text = 'Adding metadata', font = 'arial 15', background = 'black', fg = 'white').place(x= 50 , y = 210)
     metatag = EasyID3(filePath)
@@ -90,15 +93,16 @@ def Downloader():
     metatag['track'] = ''
     metatag.save()
     print('\n Finished!\n')
-    tk.Label(root, text = 'DOWNLOADED', font = 'arial 15', background = 'black', fg = 'white').place(x= 180 , y = 450)  
-    tk.Label(root, text = f"{video_info['title']}", font = 'arial 15', background = 'black', fg = 'white').place(x= 32 , y = 500)
+    tk.Label(root, text = 'DOWNLOADED', font = 'arial 15', background = '#232323', fg = 'white').place(x= 180 , y = 450)  
+    tk.Label(root, text = f"{video_info['title']}", font = 'arial 15', background = '#232323', fg = 'white', wraplength = 450, justify = 'left').place(x = 32 , y = 500)
 def DownloaderStart(event=None):
     y = threading.Thread(target=Downloader)
     y.start()
 
 
-bg = str(cwd)+'\\assets\\button.png'
-bgh = str(cwd)+'\\assets\\buttonHover.png'
+
+bg = str(ROOT_DIR)+'\\assets\\button.png'
+bgh = str(ROOT_DIR)+'\\assets\\buttonHover.png'
 ph = tk.PhotoImage(file=bg)
 phh = tk.PhotoImage(file=bgh)
 
@@ -108,7 +112,7 @@ def on_enter(e):
 def on_leave(e):
     butt['image'] = ph
 
-butt = tk.Button(root, image = ph, width = 152, height = 50,borderwidth = 0, command = DownloaderStart)
+butt = tk.Button(root, image = ph, width = 152, height = 50,borderwidth = 0, command = DownloaderStart, background='#232323', activebackground='#232323')
 butt.image = ph
 butt.place(x=174 ,y = 210)
 butt.bind("<Enter>", on_enter)
