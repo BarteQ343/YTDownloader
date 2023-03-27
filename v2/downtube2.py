@@ -156,6 +156,10 @@ class Window(QWidget):
         self.button = QPushButton("Download", self)
         self.button.setMaximumWidth(text_area_width)
         self.button.clicked.connect(self.button_click)
+        self.button.setAutoDefault(True)
+        self.button.setDefault(True)
+        self.button.setFocusPolicy(Qt.StrongFocus)
+        self.button.setFocus()
 
         text_area = QTextEdit(self)
         text_area.setReadOnly(True)
