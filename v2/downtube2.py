@@ -160,6 +160,8 @@ class Window(QWidget):
         self.button.setDefault(True)
         self.button.setFocusPolicy(Qt.StrongFocus)
         self.button.setFocus()
+        shortcut = QShortcut(Qt.Key_Return, self)
+        shortcut.activated.connect(self.button.click)
 
         text_area = QTextEdit(self)
         text_area.setReadOnly(True)
