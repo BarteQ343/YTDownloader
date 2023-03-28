@@ -160,6 +160,7 @@ class Window(QWidget):
         self.button.setDefault(True)
         self.button.setFocusPolicy(Qt.StrongFocus)
         self.button.setFocus()
+        self.button.setShortcut('<Return>')
 
         text_area = QTextEdit(self)
         text_area.setReadOnly(True)
