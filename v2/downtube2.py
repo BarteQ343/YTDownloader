@@ -5,7 +5,6 @@ import yt_dlp                               # for Downloading from YouTube
 import os                                   # for getting os type (Win or Linux)
 from mutagen.easyid3 import EasyID3         # for adding sample metadata
 import sys                                  # for saving file
-import datetime
 from win32com.shell import shell, shellcon  # for finding out where the music library is #type: ignore
 from yt_dlp.utils import DownloadError      # for error handling (duh)
 
@@ -297,10 +296,6 @@ class Window(QMainWindow):
         widgetWindow2.label3.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
         widgetWindow2.text_input3 = QLineEdit()
         widgetWindow2.text_input3.setInputMask("9999;_")
-        today = datetime.date.today()
-        todayy = today.year
-        if int(widgetWindow2.text_input3.text()) > todayy:
-            widgetWindow2.text_input3.setText(todayy)
         widgetWindow2.text_input3.setText(date)
         widgetWindow2.label4 = QLabel("Album:")
         widgetWindow2.label4.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
