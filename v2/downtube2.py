@@ -5,10 +5,9 @@ import yt_dlp                               # for Downloading from YouTube
 import os                                   # for getting os type (Win or Linux)
 from mutagen.easyid3 import EasyID3         # for adding sample metadata
 import sys                                  # for saving file
-import threading                            # for real time console in tkinter
+import datetime
 from win32com.shell import shell, shellcon  # for finding out where the music library is #type: ignore
 from yt_dlp.utils import DownloadError      # for error handling (duh)
-import platform
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))   # getting workfolder path for locating assets
 
@@ -65,11 +64,6 @@ class Window(QMainWindow):
                 font-weight: bold;
             }
             QLineEdit {
-                background-color: #2c2c2c;
-                color: #FFFFFF;
-                padding: 10px;
-            }
-            QTextEdit {
                 background-color: #2c2c2c;
                 color: #FFFFFF;
                 padding: 10px;
@@ -135,7 +129,7 @@ class Window(QMainWindow):
         sub_layout = QHBoxLayout()
         sub_layout.addWidget(small_label)
         sub_layout.addWidget(self.input_field)
-        sub_layout.setContentsMargins(50, 0, 10, 10)
+        sub_layout.setContentsMargins(10, 0, 10, 10)
         sub_layout.setSpacing(10)
         v_layout.addLayout(sub_layout)
         
@@ -175,7 +169,7 @@ class Window(QMainWindow):
 
     def button_click(self):
         link = self.input_field.text()
-        self.DownloaderStart(link)
+        self.Downloader(link)
 
     def openFileNameDialog(self):                               # this is used to show dir select dialog
         global musicDir
@@ -199,81 +193,74 @@ class Window(QMainWindow):
         except DownloadError:
             self.small_label3.setText("Something went wrong\nCheck the link")
             # if the url is somehow wrong (or non existant) it give you an error instead of just nothing
-        year = video_info['upload_date']                                                                                # this is for metatags later
-        filename = fr"{video_info['title']}"                                                                        # filename based on the video title
-        newFilename = list(filename)                                                                                # I'm sanitizing the title here, because yt_dlp sanitizes it down the lane, but mutagen doesn't 
-        for i in range (0, len(newFilename)):                                                                           # yt_dlp doesn't spit out the sanitized name either so it creates errors with "missing file" when certain characters are in the video title
-            if newFilename[i] == '|' or newFilename[i] == '"' or newFilename[i] == '?':
-                newFilename[i] = '#'
-        filename = ''.join(newFilename)      
-        filePath = musicDir+"/" + filename                                                                   # here I set the path to the save file
-        options={'format':'bestaudio/best', 'keepvideo':False, 'outtmpl':filePath, 'addmetadata':True,                  # options for downloader: bestaudio, no video and metadata support (which borks the file anyway on its own if you try to actually edit the metadata)
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            },
-            ]}
+        try:
+            year = video_info['upload_date']                                                                                # this is for metatags later
+            year = year[0:4]
+            filename = fr"{video_info['title']}"                                                                        # filename based on the video title
+            self.small_label3.setText("Downloading:\n"+filename)
+            QApplication.processEvents()
+            newFilename = list(filename)                                                                                # I'm sanitizing the title here, because yt_dlp sanitizes it down the lane, but mutagen doesn't 
+            for i in range (0, len(newFilename)):                                                                           # yt_dlp doesn't spit out the sanitized name either so it creates errors with "missing file" when certain characters are in the video title
+                if newFilename[i] == '|' or newFilename[i] == '"' or newFilename[i] == '?':
+                    newFilename[i] = '#'
+            filename = ''.join(newFilename)      
+            filePath = musicDir+"/" + filename
+            filePath = str(filePath)                                                                   # here I set the path to the save file
+            options={'format':'bestaudio/best', 'keepvideo':False, 'outtmpl':filePath, 'addmetadata':True,                  # options for downloader: bestaudio, no video and metadata support (which borks the file anyway on its own if you try to actually edit the metadata)
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                },
+                ]}
 
-        self.small_label3.setText("Downloading:\n"+filename)
-        yt_dlp.YoutubeDL(options).download([video_info['webpage_url']])                                                 # and here's the downloader itself
+            yt_dlp.YoutubeDL(options).download([video_info['webpage_url']])                                                 # and here's the downloader itself
+            
+            title = video_info['title']
+            artist = 'Unknown'
+            date = year
+            album = ''
+            trackNr = ''
 
-        self.show_new_window()
+            self.show_new_window(video_info['title'], artist=video_info['channel'], date=year, filePath=filePath)
+            self.small_label3.setText("Downloaded; adding metatags")
+            QApplication.processEvents()
 
-        self.small_label3.setText("Downloaded; adding metatags")
-        metatag = EasyID3(filePath+'.mp3')                         # every single line starting with metatag uses mutagen to add metatags. Sample metatags of course, just so it looks good, I always use AutomaTag on Android to actually tag my songs anyway
-        metatag['title'] = video_info['title']              # it's really only needed because of yt_dlp borking files when you try to edit metatags later with something like AutomaTag. Might be due to my incorrect installation of FFmpeg tho, idk
-        metatag['artist'] = "Unknown"
-        metatag['date'] = year[0:4]
-        metatag.RegisterTextKey("track", "TRCK")
-        metatag['track'] = ''
-        metatag.save()      
+            
+        except UnboundLocalError:
+            self.small_label3.setText("Something went wrong\nCheck the link")
 
-        self.small_label3.setText("Finished")                                                                                         # these 3 lines inform the user that it's done and spit out the filename (with text wrapping so it doesn't exceed the size of a window)
-
-    def DownloaderStart(self, link, event=None):                    # thats needed to run the downloader and the console at the same time. If they were on the same thread the console would just spit out everything at once at the end
-        y = threading.Thread(target=self.Downloader, args=(link,))
-        y.start()
-
-    def show_new_window(self):
-        self.w = NewWindow(self)
-        self.w.show()
-        w = self.w
-        yield w
-
-class NewWindow(QMainWindow):
-    def __init__(self):
-        QMainWindow.__init__(self)
+    def show_new_window(self, title, date, filePath, artist="Unknown"):
+        defaultTitle = title
+        defaultArtist = artist
+        defaultDate = date
+        filePath = filePath
+        newWindow = QMainWindow(self)
+        newWindow.setAttribute(Qt.WA_DeleteOnClose)
         icon = resource_path("assets/logo.png")
         # set window properties
-        self.setWindowTitle("YT downloader")
-        self.setGeometry(100, 100, 570, 600)
-        self.setWindowIcon(QIcon(icon))
-        widget = QWidget()
-        self.setCentralWidget(widget)
-        icon = resource_path("assets/logo.png")
-        # set window properties
-        self.setWindowTitle("YT downloader - Edit metatags")
-        self.setGeometry(100, 100, 570, 600)
-        self.setWindowIcon(QIcon(icon))
-        widget.setStyleSheet("""
+        newWindow.setWindowTitle("YT downloader - Edit metatags")
+        newWindow.setGeometry(100, 100, 570, 600)
+        newWindow.setWindowIcon(QIcon(icon))
+        widgetWindow2 = QWidget()
+        newWindow.setCentralWidget(widgetWindow2)
+        widgetWindow2.setStyleSheet("""
             QPushButton {
                 border-style: solid;
                 border-width: 2px;
-                border-color: #B0B0B0;
                 border-radius: 8px;
+                border-color: #4F4F4F;
                 padding: 5px;
-                background-color: #2D2D30;
+                background-color: #1E1E1E;
                 color: #F0F0F0;
             }
             QPushButton:hover {
-                border-color: #F0A202;
-                background-color: #4A4A4A;
-           }
+                border-color: #2196F3;
+                color: #2196F3;
+            }
             QPushButton:pressed {
-                border-color: #F0A202;
-                background-color: #F0A202;
-                color: #2D2D30;
+                background-color: #2196F3;
+                color: #FFFFFF;
             }
             QWidget {
                 background-color: #212121;
@@ -292,68 +279,99 @@ class NewWindow(QMainWindow):
             }
         """)
 
-        max_width = int(self.width() * 0.95)
+        max_width = int(newWindow.width() * 0.95)
         # Create a big, centered label
-        widget.big_label = QLabel("Edit metatags")
-        widget.big_label.setAlignment(Qt.AlignCenter)
+        widgetWindow2.big_label = QLabel("Edit metatags")
+        widgetWindow2.big_label.setAlignment(Qt.AlignCenter)
 
         # Create pairs of small label and text input field
-        widget.label1 = QLabel("Title:")
-        widget.label1.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
-        widget.text_input1 = QLineEdit()
-        widget.text_input1.setText("test")
-        widget.label2 = QLabel("Artist:")
-        widget.label2.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
-        widget.text_input2 = QLineEdit()
-        widget.label3 = QLabel("Year:")
-        widget.label3.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
-        widget.text_input3 = QLineEdit()
-        widget.label4 = QLabel("Album:")
-        widget.label4.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
-        widget.text_input4 = QLineEdit()
-        widget.label5 = QLabel("Track nr:")
-        widget.label5.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
-        widget.text_input5 = QLineEdit()
+        widgetWindow2.label1 = QLabel("Title:")
+        widgetWindow2.label1.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
+        widgetWindow2.text_input1 = QLineEdit()
+        widgetWindow2.text_input1.setText(title)
+        widgetWindow2.label2 = QLabel("Artist:")
+        widgetWindow2.label2.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
+        widgetWindow2.text_input2 = QLineEdit()
+        widgetWindow2.text_input2.setText(artist)
+        widgetWindow2.label3 = QLabel("Year:")
+        widgetWindow2.label3.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
+        widgetWindow2.text_input3 = QLineEdit()
+        widgetWindow2.text_input3.setInputMask("9999;_")
+        today = datetime.date.today()
+        todayy = today.year
+        if int(widgetWindow2.text_input3.text()) > todayy:
+            widgetWindow2.text_input3.setText(todayy)
+        widgetWindow2.text_input3.setText(date)
+        widgetWindow2.label4 = QLabel("Album:")
+        widgetWindow2.label4.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
+        widgetWindow2.text_input4 = QLineEdit()
+        widgetWindow2.label5 = QLabel("Track nr:")
+        widgetWindow2.label5.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
+        widgetWindow2.text_input5 = QLineEdit()
+
+        def accept_tags():
+            title = widgetWindow2.text_input1.text()
+            artist = widgetWindow2.text_input2.text()
+            date = widgetWindow2.text_input3.text()
+            album = widgetWindow2.text_input4.text()
+            trackNr = widgetWindow2.text_input5.text()
+            self.add_tags(title, artist, date, album, trackNr, filePath)
+            self.small_label3.setText("Finished")
+            newWindow.close()
+
+        def reset():
+            widgetWindow2.text_input1.setText(defaultTitle)
+            widgetWindow2.text_input2.setText(defaultArtist)
+            widgetWindow2.text_input3.setText(defaultDate)
 
         # Create two buttons
-        widget.button1 = QPushButton("Reset")
-        widget.button1.setMaximumWidth(max_width)
-        widget.button2 = QPushButton("Done")
-        widget.button2.setMaximumWidth(max_width)
-        widget.button2.clicked.connect(self.close_handler)
+        widgetWindow2.button1 = QPushButton("Reset")
+        widgetWindow2.button1.setMaximumWidth(max_width)
+        widgetWindow2.button1.clicked.connect(reset)
+        widgetWindow2.button2 = QPushButton("Done")
+        widgetWindow2.button2.setMaximumWidth(max_width)
+        widgetWindow2.button2.clicked.connect(accept_tags)
 
         # Create layout for small label and text input field pairs
-        widget.layout = QVBoxLayout()
-        widget.layout.addWidget(widget.label1)
-        widget.layout.addWidget(widget.text_input1)
-        widget.layout.addWidget(widget.label2)
-        widget.layout.addWidget(widget.text_input2)
-        widget.layout.addWidget(widget.label3)
-        widget.layout.addWidget(widget.text_input3)
-        widget.layout.addWidget(widget.label4)
-        widget.layout.addWidget(widget.text_input4)
-        widget.layout.addWidget(widget.label5)
-        widget.layout.addWidget(widget.text_input5)
-        widget.layout.setSpacing(10)
+        widgetWindow2.layout = QVBoxLayout()
+        widgetWindow2.layout.addWidget(widgetWindow2.label1)
+        widgetWindow2.layout.addWidget(widgetWindow2.text_input1)
+        widgetWindow2.layout.addWidget(widgetWindow2.label2)
+        widgetWindow2.layout.addWidget(widgetWindow2.text_input2)
+        widgetWindow2.layout.addWidget(widgetWindow2.label3)
+        widgetWindow2.layout.addWidget(widgetWindow2.text_input3)
+        widgetWindow2.layout.addWidget(widgetWindow2.label4)
+        widgetWindow2.layout.addWidget(widgetWindow2.text_input4)
+        widgetWindow2.layout.addWidget(widgetWindow2.label5)
+        widgetWindow2.layout.addWidget(widgetWindow2.text_input5)
+        widgetWindow2.layout.setSpacing(10)
 
         # Create layout for buttons
-        widget.button_layout = QHBoxLayout()
-        widget.button_layout.addWidget(widget.button1)
-        widget.button_layout.addWidget(widget.button2)
-        widget.button_layout.setContentsMargins(10, 15, 10, 10)
-        widget.button_layout.setSpacing(10)
+        widgetWindow2.button_layout = QHBoxLayout()
+        widgetWindow2.button_layout.addWidget(widgetWindow2.button1)
+        widgetWindow2.button_layout.addWidget(widgetWindow2.button2)
+        widgetWindow2.button_layout.setContentsMargins(10, 15, 10, 10)
+        widgetWindow2.button_layout.setSpacing(10)
 
         # Create main layout for the new window
-        widget.main_layout = QVBoxLayout()
-        widget.main_layout.addWidget(widget.big_label)
-        widget.main_layout.addLayout(widget.layout)
-        widget.main_layout.addLayout(widget.button_layout)
+        widgetWindow2.main_layout = QVBoxLayout()
+        widgetWindow2.main_layout.addWidget(widgetWindow2.big_label)
+        widgetWindow2.main_layout.addLayout(widgetWindow2.layout)
+        widgetWindow2.main_layout.addLayout(widgetWindow2.button_layout)
 
         # Set the main layout for the window
-        widget.setLayout(widget.main_layout)
-
-    def close_handler(self):
-        self.close()
+        widgetWindow2.setLayout(widgetWindow2.main_layout)
+        newWindow.show()
+        
+    def add_tags(self, title, artist, date, album, trackNr, filePath):
+        metatag = EasyID3(filePath+'.mp3')                         # every single line starting with metatag uses mutagen to add metatags. Sample metatags of course, just so it looks good, I always use AutomaTag on Android to actually tag my songs anyway
+        metatag['title'] = title              # it's really only needed because of yt_dlp borking files when you try to edit metatags later with something like AutomaTag. Might be due to my incorrect installation of FFmpeg tho, idk
+        metatag['artist'] = artist
+        metatag['date'] = date
+        metatag['album'] = album
+        metatag.RegisterTextKey("track", "TRCK")
+        metatag['track'] = trackNr
+        metatag.save()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
