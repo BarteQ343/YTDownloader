@@ -1,14 +1,23 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QHBoxLayout, QScrollBar, QFileDialog, QMainWindow
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QMainWindow
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap, QTextCursor, QIcon
+from PyQt5.QtGui import QIcon
 import yt_dlp                               # for Downloading from YouTube
-import os                                   # for getting os type (Win or Linux)
+import os
 from mutagen.easyid3 import EasyID3         # for adding sample metadata
-import sys                                  # for saving file
+import sys
 from win32com.shell import shell, shellcon  # for finding out where the music library is #type: ignore
-from yt_dlp.utils import DownloadError      # for error handling (duh)
+from yt_dlp.utils import DownloadError
+import logging
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))   # getting workfolder path for locating assets
+#This debug logger is here for one reason and one reason only - I need to redirect stdout somewhere for when the app is compiled with pyinstaller without a console
+#If you want to use the console you can comment/remove it and it will work. Without console this needs to be here
+debug_logger = logging.getLogger('debug')
+debug_logger.write = debug_logger.debug    #consider all prints as debug information
+debug_logger.flush = lambda: None   # this may be called when printing
+#debug_logger.setLevel(logging.DEBUG)      #activate debug logger output
+sys.stdout = debug_logger
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))   # getting workfolder path just in case
 
 global musicDir
 
@@ -73,11 +82,11 @@ class Window(QMainWindow):
         text_area_width = int(self.width() * 0.95)
         # create widgets
         big_label = QLabel("YT Downloader", widget)
-        big_label.setAlignment(Qt.AlignCenter) # Center alignment
+        big_label.setAlignment(Qt.AlignCenter) 
         big_label.setStyleSheet("margin-bottom: 16px; margin-left: 0")
 
         small_label = QLabel("Paste your link here:", widget)
-        small_label.setAlignment(Qt.AlignCenter) # Center alignment
+        small_label.setAlignment(Qt.AlignCenter) 
         small_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
         small_label.setMaximumWidth(text_area_width)
 
@@ -96,25 +105,17 @@ class Window(QMainWindow):
         self.button2.setMaximumWidth(text_area_width)
         self.button2.clicked.connect(self.openFileNameDialog)
 
-
-        #text_area = QTextEdit(self)
-        #text_area.setReadOnly(True)
-        #text_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
         self.small_label2 = QLabel("Console", widget)
-        self.small_label2.setAlignment(Qt.AlignCenter) # Center alignment
+        self.small_label2.setAlignment(Qt.AlignCenter) 
         self.small_label2.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
 
         self.small_label3 = QLabel(" ", widget)
-        self.small_label3.setAlignment(Qt.AlignCenter) # Center alignment
+        self.small_label3.setAlignment(Qt.AlignCenter) 
         self.small_label3.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
 
         self.squish = QLabel(" ", widget)
         self.squish.setAlignment(Qt.AlignCenter) # Center alignment
         self.squish.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px; margin-top:20px")
-
-        # set text area width
-        #text_area.setMaximumWidth(text_area_width)
 
         # create layouts
         v_layout = QVBoxLayout()
@@ -124,7 +125,7 @@ class Window(QMainWindow):
         sub_layout5.setSpacing(0)
         v_layout.addLayout(sub_layout5)
 
-        # create a sub-layout for the small label and input field
+        # create sub-layouts for each row
         sub_layout = QHBoxLayout()
         sub_layout.addWidget(small_label)
         sub_layout.addWidget(self.input_field)
@@ -157,6 +158,7 @@ class Window(QMainWindow):
         sub_layout6.setSpacing(10)
         v_layout.addLayout(sub_layout6)
 
+        # set horizontal layout
         h_layout = QHBoxLayout()
         h_layout.addLayout(v_layout)
 
@@ -170,12 +172,12 @@ class Window(QMainWindow):
         link = self.input_field.text()
         self.Downloader(link)
 
-    def openFileNameDialog(self):                               # this is used to show dir select dialog
+    def openFileNameDialog(self):        # this is used to show dir select dialog
         global musicDir
         options = QFileDialog.Options()
         options |= QFileDialog.ShowDirsOnly
         musicDirTmp = QFileDialog.getExistingDirectory(self,"Choose Save Directory", "", options=options)
-        if musicDirTmp == "":                                           # in case the user clicks cancel it just confirms the last directory that was selected, be it the default one or a custom one
+        if musicDirTmp == "":    # in case the user clicks cancel it just confirms the last directory that was selected, be it the default one or a custom one
             musicDirLoc = "Current download location:\n"+musicDir
             self.small_label2.setText(musicDirLoc)
         else:
@@ -184,28 +186,28 @@ class Window(QMainWindow):
             self.small_label2.setText(musicDirLoc)
 
 
-    def Downloader(self, link):                                                                                                   # lots of commenting here, oh boy
+    def Downloader(self, link):   # lots of commenting here, oh boy
         url = str(link)
-        print('Dowloading: '+url+'\n')
+        #print('Dowloading: '+url+'\n')
         try:
-            video_info = yt_dlp.YoutubeDL().extract_info(url = url,download=False)                            # this line extracts info about the vid you're trying to pira...er... download like name and similar stuff
+            video_info = yt_dlp.YoutubeDL().extract_info(url = url,download=False)   # this line extracts info about the vid you're trying to pira...er... download like name and similar stuff
         except DownloadError:
             self.small_label3.setText("Something went wrong\nCheck the link")
             # if the url is somehow wrong (or non existant) it give you an error instead of just nothing
         try:
-            year = video_info['upload_date']                                                                                # this is for metatags later
+            year = video_info['upload_date']   # this is for metatags later and in case the link is wrong it raises an UnboundLocalError which I use to check if the link is fine
             year = year[0:4]
-            filename = fr"{video_info['title']}"                                                                        # filename based on the video title
+            filename = fr"{video_info['title']}"   # filename based on the video title
             self.small_label3.setText("Downloading:\n"+filename)
             QApplication.processEvents()
-            newFilename = list(filename)                                                                                # I'm sanitizing the title here, because yt_dlp sanitizes it down the lane, but mutagen doesn't 
-            for i in range (0, len(newFilename)):                                                                           # yt_dlp doesn't spit out the sanitized name either so it creates errors with "missing file" when certain characters are in the video title
+            newFilename = list(filename)  # I'm sanitizing the title here, because yt_dlp sanitizes it down the lane, but mutagen doesn't 
+            for i in range (0, len(newFilename)):  # yt_dlp doesn't spit out the sanitized name either so it creates errors with "missing file" when certain characters are in the video title
                 if newFilename[i] == '|' or newFilename[i] == '"' or newFilename[i] == '?':
                     newFilename[i] = '#'
             filename = ''.join(newFilename)      
             filePath = musicDir+"/" + filename
-            filePath = str(filePath)                                                                   # here I set the path to the save file
-            options={'format':'bestaudio/best', 'keepvideo':False, 'outtmpl':filePath, 'addmetadata':True,                  # options for downloader: bestaudio, no video and metadata support (which borks the file anyway on its own if you try to actually edit the metadata)
+            filePath = str(filePath) # here I set the path to the save file
+            options={'format':'bestaudio/best', 'keepvideo':False, 'outtmpl':filePath, 'addmetadata':True, # options for downloader: bestaudio, no video and metadata support (which borks the file anyway on its own if you try to actually edit the metadata)
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
@@ -213,24 +215,23 @@ class Window(QMainWindow):
                 },
                 ]}
 
-            yt_dlp.YoutubeDL(options).download([video_info['webpage_url']])                                                 # and here's the downloader itself
+            yt_dlp.YoutubeDL(options).download([video_info['webpage_url']])  # and here's the downloader itself
             
-            title = video_info['title']
+            title = video_info['title']     # setting base metatags
             artist = 'Unknown'
             date = year
             album = ''
             trackNr = ''
 
-            self.show_new_window(video_info['title'], artist=video_info['channel'], date=year, filePath=filePath)
+            self.show_new_window(video_info['title'], artist=video_info['channel'], date=year, filePath=filePath) # calling the 2nd window in which you can edit the metatags before finalazing the download
             self.small_label3.setText("Downloaded; adding metatags")
-            QApplication.processEvents()
-
+            QApplication.processEvents()   # These are dotted here and there to make sure it shows the status of the download (Downloading, adding metatags or finished)
             
         except UnboundLocalError:
             self.small_label3.setText("Something went wrong\nCheck the link")
 
-    def show_new_window(self, title, date, filePath, artist="Unknown"):
-        defaultTitle = title
+    def show_new_window(self, title, date, filePath, artist="Unknown"): #defining the 2nd window
+        defaultTitle = title   #saving the default metatags to reset them in case you mess something up when editing them
         defaultArtist = artist
         defaultDate = date
         filePath = filePath
@@ -304,7 +305,7 @@ class Window(QMainWindow):
         widgetWindow2.label5.setStyleSheet("font-size: 16px; font-weight: bold; margin-right: 16px")
         widgetWindow2.text_input5 = QLineEdit()
 
-        def accept_tags():
+        def accept_tags():  #defining what happens when you accept the new tags
             title = widgetWindow2.text_input1.text()
             artist = widgetWindow2.text_input2.text()
             date = widgetWindow2.text_input3.text()
@@ -358,7 +359,7 @@ class Window(QMainWindow):
         widgetWindow2.setLayout(widgetWindow2.main_layout)
         newWindow.show()
         
-    def add_tags(self, title, artist, date, album, trackNr, filePath):
+    def add_tags(self, title, artist, date, album, trackNr, filePath):  # this used to be in the downloader function, it is otherwise unedited compared to previous versions
         metatag = EasyID3(filePath+'.mp3')                         # every single line starting with metatag uses mutagen to add metatags. Sample metatags of course, just so it looks good, I always use AutomaTag on Android to actually tag my songs anyway
         metatag['title'] = title              # it's really only needed because of yt_dlp borking files when you try to edit metatags later with something like AutomaTag. Might be due to my incorrect installation of FFmpeg tho, idk
         metatag['artist'] = artist
@@ -374,4 +375,3 @@ if __name__ == '__main__':
     window.show()
     sys.exit(app.exec_())
 
-#https://copyprogramming.com/howto/pyqt5-creating-new-window
