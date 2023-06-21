@@ -263,8 +263,25 @@ class Window(QWidget):
         filename = fr"{video_info['title']}"                                                                        # filename based on the video title
         newFilename = list(filename)                                                                                # I'm sanitizing the title here, because yt_dlp sanitizes it down the lane, but mutagen doesn't 
         for i in range (0, len(newFilename)):                                                                           # yt_dlp doesn't spit out the sanitized name either so it creates errors with "missing file" when certain characters are in the video title
-            if newFilename[i] == '|' or newFilename[i] == '"' or newFilename[i] == '?':
-                newFilename[i] = '#'
+            for i in range (0, len(newFilename)):  # yt_dlp doesn't spit out the sanitized name either so it creates errors with "missing file" when certain characters are in the video title
+                if newFilename[i] == '|' or newFilename[i] == '"' or newFilename[i] == '?' or newFilename[i] == ':':
+                    newFilename[i] = '#'
+                if newFilename[i] == 'ś':
+                    newFilename[i] = 's'
+                if newFilename[i] == 'ć':
+                    newFilename[i] = 'c'
+                if newFilename[i] == 'ą':
+                    newFilename[i] = 'a'
+                if newFilename[i] == 'ę':
+                    newFilename[i] = 'e'
+                if newFilename[i] == 'ł':
+                    newFilename[i] = 'l'
+                if newFilename[i] == 'ó':
+                    newFilename[i] = 'o'
+                if newFilename[i] == 'ż':
+                    newFilename[i] = 'z'
+                if newFilename[i] == 'ź':
+                    newFilename[i] = 'z'
         filename = ''.join(newFilename)      
         filePath = musicDir+"/" + filename                                                                   # here I set the path to the save file
         options={'format':'bestaudio/best', 'keepvideo':False, 'outtmpl':filePath, 'addmetadata':True,                  # options for downloader: bestaudio, no video and metadata support (which borks the file anyway on its own if you try to actually edit the metadata)
